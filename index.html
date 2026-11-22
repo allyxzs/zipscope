@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ZipScope — raio-X de ZIP antes de extrair</title>
+  <meta name="description" content="Inspecione qualquer arquivo .zip no navegador antes de extrair: arquivos, tamanhos, taxa de compressão, extensões perigosas e nível de suspeita de zip bomb." />
+  <meta name="theme-color" content="#07080b" />
+  <meta property="og:title" content="ZipScope — raio-X de ZIP antes de extrair" />
+  <meta property="og:description" content="Detector de zip bomb, extensões perigosas e caminhos maliciosos, direto no navegador." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23090a0c'/%3E%3Cpath d='M6 16h5l3-7 4 14 3-7h5' fill='none' stroke='%23c9fa6e' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-in">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 3 12 2-6h7" /></svg>
+        </span>
+        <span class="brand-text"><strong>ZipScope</strong><em>raio-x de zip</em></span>
+      </a>
+      <span class="pill"><i></i>100% local</span>
+    </div>
+  </header>
+
+  <main class="wrap" id="top">
+    <section class="hero">
+      <p class="eyebrow">raio-x de arquivos compactados</p>
+      <h1>Veja o que tem dentro do ZIP <span>antes</span> de extrair.</h1>
+      <p class="lede">Arraste um arquivo e o ZipScope lista cada entrada, mede a taxa de compressão, aponta extensões perigosas e caminhos maliciosos. Tudo no seu navegador, sem enviar nada para lugar nenhum.</p>
+    </section>
+
+    <div class="drop-wrap">
+      <div id="drop" class="drop" role="button" tabindex="0" aria-label="Escolher um arquivo ZIP">
+        <span class="drop-scan" aria-hidden="true"></span>
+        <span class="drop-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+        </span>
+        <p id="drop-title" class="drop-title">Solte o .zip aqui</p>
+        <p class="drop-sub">ou clique para escolher um arquivo</p>
+        <p class="drop-note">lido no navegador · nenhum upload · nada é extraído</p>
+      </div>
+      <input id="file" type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden />
+      <p id="error" class="error" hidden></p>
+    </div>
+
+    <section id="result" class="result" hidden>
+      <div class="result-head">
+        <div>
+          <p class="eyebrow">raio-x concluído</p>
+          <h2 id="file-name">arquivo.zip</h2>
+          <p id="summary" class="summary"></p>
+        </div>
+        <p id="file-meta" class="file-meta"></p>
+      </div>
+
+      <div class="grid-main">
+        <article class="card gauge-card">
+          <div class="card-head">
+            <span class="card-label">Detector de bomba</span>
+            <span id="level-chip" class="chip chip-safe">Tranquilo</span>
+          </div>
+          <div class="gauge">
+            <svg viewBox="0 0 200 116" class="gauge-svg" role="img" aria-label="Nível de suspeita">
+              <path d="M14 106 A 86 86 0 0 1 186 106" class="gauge-track" />
+              <path id="gauge-arc" d="M14 106 A 86 86 0 0 1 186 106" class="gauge-arc" stroke-dasharray="0 280" />
+            </svg>
+            <div class="gauge-read">
+              <span id="score">0</span>
+              <em>de 100</em>
+            </div>
+          </div>
+          <div class="gauge-scale"><span>0 tranquilo</span><span>100 bomba</span></div>
+          <p id="verdict" class="verdict"></p>
+        </article>
+
+        <div id="stats" class="stats"></div>
+      </div>
+
+      <article class="card">
+        <div class="card-head">
+          <span class="card-label">Alertas</span>
+          <span id="alert-count" class="card-meta"></span>
+        </div>
+        <div id="alerts" class="alerts"></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <span class="card-label">Arquivos</span>
+          <div class="tabs">
+            <button id="tab-all" type="button" class="tab is-on">Todos</button>
+            <button id="tab-flagged" type="button" class="tab">Suspeitos</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Caminho</th>
+                <th class="th-num">Tamanho</th>
+                <th class="th-num">Compactado</th>
+                <th>Taxa</th>
+                <th>Sinal</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <p id="table-note" class="note" hidden></p>
+      </article>
+    </section>
+
+    <section class="checks">
+      <p class="eyebrow">o que o raio-x procura</p>
+      <div class="checks-grid">
+        <div class="check"><strong>Detector de bomba</strong><span>Compara tamanho real e compactado para achar taxas de expansão impossíveis.</span></div>
+        <div class="check"><strong>Caminhos maliciosos</strong><span>Procura por ".." e caminhos absolutos que escapam da pasta de destino.</span></div>
+        <div class="check"><strong>Extensões perigosas</strong><span>Sinaliza executáveis, scripts, macros e disfarces como foto.jpg.exe.</span></div>
+        <div class="check"><strong>ZIP dentro de ZIP</strong><span>Conta arquivos compactados aninhados e o volume total de entradas.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-in">
+      <p>ZipScope · análise local com JSZip e File API</p>
+      <p class="foot-note">O arquivo nunca sai do seu dispositivo. Nada é enviado, nada é extraído: o raio-x lê apenas o índice do ZIP.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
