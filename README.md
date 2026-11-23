@@ -1,31 +1,34 @@
-# ZipScope 1.1
+# ZipScope 1.2
 
-Inspeção local do índice de arquivos ZIP, antes da extração.
+Inspeção local do índice de arquivos ZIP antes da extração. Abra index.html e selecione um ZIP. A análise mostra caminhos, tamanhos declarados, taxas de expansão e indicadores para revisão.
 
-## Uso
+## Atualização 1.2
 
-Abra index.html e escolha ou arraste um ZIP. O aplicativo mostra os nomes, tamanhos declarados, taxa de expansão e sinais que merecem revisão. Os filtros permitem visualizar todas as entradas ou somente as sinalizadas. Use “Mostrar mais 200” para avançar na lista.
+- Busca por nome, pasta e extensão, combinada com o filtro de entradas sinalizadas.
+- Contagem de tamanho e maior arquivo corrigida para considerar arquivos, mantendo a inspeção de caminhos das pastas.
+- Pastas identificadas na listagem.
+- Mensagens de extensão dupla e lista vazia mais precisas.
+- Arquivo .nojekyll incluído para servir o projeto como site estático.
+- Interface e código continuam incorporados em index.html, com funcionamento offline.
 
-## Melhorias desta versão
+## Uso e limites
 
-- Página independente com estilos e JavaScript incorporados, evitando falhas causadas por pastas de recursos ausentes.
-- Funcionamento offline, com fontes do dispositivo e sem dependências de CDN.
-- Leitura direta do índice central, preservando caminhos suspeitos e entradas repetidas.
-- Identificação de caminhos com barras invertidas, diretórios suspeitos, links simbólicos, criptografia e caracteres especiais.
-- Resultados antigos são ocultados ao iniciar outra análise. A seleção mais recente tem prioridade.
-- Limites explícitos e mensagens para arquivos incompatíveis.
-- Pontuação apresentada como indicador heurístico.
+Escolha um ZIP de até 512 MB. O índice pode ter até 30 mil entradas e 32 MB. Use “Mostrar mais 200” para ampliar a lista.
 
-## Limites
+ZIP64, ZIPs divididos em volumes e algumas variantes não são compatíveis. A leitura usa apenas o índice central e o final do arquivo, sem descompactar os conteúdos.
 
-Até 512 MB por ZIP, 30 mil entradas e 32 MB de índice central. O aplicativo lê o final do arquivo e o índice, evitando carregar o conteúdo completo na memória. ZIP64, arquivos divididos em volumes e algumas variantes de ZIP não são compatíveis. ZIPs criptografados com índice legível podem ser listados, com alerta.
-
-Os tamanhos são declarados pelo próprio arquivo. A análise não verifica CRC, não valida o conteúdo de cada entrada e não inspeciona arquivos compactados internos. A pontuação não confirma malware nem garante segurança.
-
-## Arquivos
-
-index.html contém a interface, estilos e lógica. LICENSE mantém a licença MIT original.
+A pontuação é heurística. Os tamanhos são declarados pelo próprio ZIP. O aplicativo não verifica CRC, conteúdo dos arquivos ou ZIPs internos e não garante ausência de malware.
 
 ## Privacidade
 
-Todo o processamento ocorre no dispositivo. A página não envia arquivos nem consulta serviços externos.
+Os arquivos são processados no dispositivo. A página funciona sem serviços externos.
+
+## Arquivos
+
+- index.html — interface, estilos e lógica.
+- .nojekyll — configuração para servir o site estático.
+- LICENSE — licença MIT original.
+
+## Verificação
+
+A sintaxe JavaScript e casos de leitura de ZIP foram verificados. A revisão visual no navegador está pendente.

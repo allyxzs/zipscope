@@ -877,6 +877,9 @@ tr:last-child td { border-bottom: 0; }
 }
 
 [hidden]{display:none!important} .path-name,.path-dir{unicode-bidi:plaintext} #more{margin:16px;padding:10px 20px;background:#c9fa6e;border:0;border-radius:8px;cursor:pointer}
+.search-label{display:block;margin:16px 18px 6px;color:var(--muted)}
+.search-path{display:block;width:calc(100% - 36px);margin:0 18px 18px;padding:12px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;font:inherit}
+.search-path:focus-visible{outline:2px solid var(--lime)}
 </style>
 </head>
 <body>
@@ -956,13 +959,13 @@ tr:last-child td { border-bottom: 0; }
 
       <article class="card">
         <div class="card-head">
-          <span class="card-label">Arquivos</span>
+          <span class="card-label">Entradas do ZIP</span>
           <div class="tabs">
             <button id="tab-all" type="button" class="tab is-on">Todos</button>
             <button id="tab-flagged" type="button" class="tab">Suspeitos</button>
           </div>
         </div>
-        <div class="table-wrap">
+        <label class="search-label" for="search-path">Buscar pelo caminho</label><input id="search-path" class="search-path" type="search" placeholder="Nome, pasta ou extensão" autocomplete="off"><div class="table-wrap">
           <table>
             <thead>
               <tr>
@@ -993,8 +996,8 @@ tr:last-child td { border-bottom: 0; }
 
   <footer class="foot">
     <div class="wrap foot-in">
-      <p>ZipScope · versão 1.1 · análise local com File API</p>
-      <p class="foot-note">Análise heurística do índice, sem verificação antivírus ou inspeção do conteúdo dos ZIPs internos. O arquivo fica no seu dispositivo. Nada é enviado, nada é extraído: o raio-x lê apenas o índice do ZIP.</p>
+      <p>ZipScope · versão 1.2 · análise local com File API</p>
+      <p class="foot-note">Análise heurística do índice, sem verificação antivírus ou inspeção do conteúdo dos ZIPs internos. O arquivo fica no seu dispositivo. A análise usa somente metadados: o raio-x lê apenas o índice do ZIP.</p>
     </div>
   </footer>
 
@@ -1159,13 +1162,15 @@ tr:last-child td { border-bottom: 0; }
     var rows = [];
 
     entries.forEach(function (file) {
-      totalSize += file.size;
-      totalCompressed += file.compressed;
-      if (!largest || file.size > largest.size) {
+      if (!file.isDir) {
+        totalSize += file.size;
+        totalCompressed += file.compressed;
+      }
+      if (!file.isDir && (!largest || file.size > largest.size)) {
         largest = { path: file.path, size: file.size };
       }
 
-      var ext = extOf(file.path);
+      var ext = file.isDir ? "" : extOf(file.path);
       var category = EXT_CATEGORY[ext] || null;
       var flags = [];
       if (file.encrypted) flags.push("encrypted");
@@ -1205,6 +1210,7 @@ tr:last-child td { border-bottom: 0; }
 
       rows.push({
         path: file.path,
+        isDir: file.isDir,
         size: file.size,
         compressed: file.compressed,
         ext: ext,
@@ -1332,7 +1338,7 @@ tr:last-child td { border-bottom: 0; }
     if (doubleExt.length) {
       score += 12;
       addAlert("high", "Extensão dupla",
-        formatCount(doubleExt.length) + " arquivo(s) escondem um executável atrás de uma extensão inofensiva, como foto.jpg.exe.");
+        formatCount(doubleExt.length) + " arquivo(s) têm extensão dupla, como foto.jpg.exe. Confira o tipo real e a origem.");
     }
 
     if (extremeRatio) {
@@ -1460,11 +1466,15 @@ tr:last-child td { border-bottom: 0; }
     var list = state.onlyFlagged
       ? state.rows.filter(function (row) { return row.flags.length > 0; })
       : state.rows;
+    var query = document.getElementById("search-path").value.toLocaleLowerCase();
+    list = list.filter(function (row) {
+      return row.path.toLocaleLowerCase().indexOf(query) !== -1;
+    });
     var shown = list.slice(0, state.visible);
     var tbody = document.getElementById("rows");
 
     if (!shown.length) {
-      tbody.innerHTML = '<tr><td class="empty" colspan="5">Nenhum arquivo com sinal de alerta neste pacote.</td></tr>';
+      tbody.innerHTML = '<tr><td class="empty" colspan="5">Nenhuma entrada corresponde ao filtro atual.</td></tr>';
     } else {
       tbody.innerHTML = shown.map(function (row) {
         var flags = row.flags.length
@@ -1480,7 +1490,7 @@ tr:last-child td { border-bottom: 0; }
         return "<tr>" +
           '<td class="cell-path" title="' + esc(row.path) + '">' +
             (dir ? '<span class="path-dir">' + esc(dir) + "/</span>" : "") +
-            '<span class="path-name">' + esc(basename(row.path)) + "</span>" +
+            '<span class="path-name">' + esc(basename(row.path)) + (row.isDir ? " (pasta)" : "") + "</span>" +
           "</td>" +
           '<td class="cell-num">' + formatBytes(row.size) + "</td>" +
           '<td class="cell-num cell-muted">' + formatBytes(row.compressed) + "</td>" +
@@ -1538,6 +1548,7 @@ tr:last-child td { border-bottom: 0; }
     renderStats(analysis);
     renderAlerts(analysis.alerts, analysis.dangerous);
 
+    document.getElementById("search-path").value = "";
     state.visible = LIMIT;
     state.rows = analysis.rows;
     state.onlyFlagged = false;
@@ -1635,6 +1646,10 @@ tr:last-child td { border-bottom: 0; }
 
   document.getElementById("more").addEventListener("click", function () {
     state.visible += LIMIT;
+    renderRows();
+  });
+  document.getElementById("search-path").addEventListener("input", function () {
+    state.visible = LIMIT;
     renderRows();
   });
   function openPicker() {
