@@ -1,41 +1,31 @@
-# ZipScope
+# ZipScope 1.1
 
-Raio-X de arquivos ZIP, direto no navegador.
+Inspeção local do índice de arquivos ZIP, antes da extração.
 
-## O que é
+## Uso
 
-O ZipScope abre um arquivo .zip e mostra o que existe dentro dele **antes** de qualquer extração: cada entrada, tamanho real, tamanho compactado, taxa de compressão, extensões perigosas, caminhos maliciosos e um nível de suspeita de zip bomb.
+Abra index.html e escolha ou arraste um ZIP. O aplicativo mostra os nomes, tamanhos declarados, taxa de expansão e sinais que merecem revisão. Os filtros permitem visualizar todas as entradas ou somente as sinalizadas. Use “Mostrar mais 200” para avançar na lista.
 
-Baixar e extrair um ZIP desconhecido é um risco real: zip bombs enchem o disco, caminhos com ".." gravam arquivos fora da pasta de destino e extensões disfarçadas executam código. O ZipScope existe para você olhar antes de abrir.
+## Melhorias desta versão
 
-## Recursos
+- Página independente com estilos e JavaScript incorporados, evitando falhas causadas por pastas de recursos ausentes.
+- Funcionamento offline, com fontes do dispositivo e sem dependências de CDN.
+- Leitura direta do índice central, preservando caminhos suspeitos e entradas repetidas.
+- Identificação de caminhos com barras invertidas, diretórios suspeitos, links simbólicos, criptografia e caracteres especiais.
+- Resultados antigos são ocultados ao iniciar outra análise. A seleção mais recente tem prioridade.
+- Limites explícitos e mensagens para arquivos incompatíveis.
+- Pontuação apresentada como indicador heurístico.
 
-- Lista completa das entradas do pacote, com tamanho real, tamanho compactado e taxa de compressão por arquivo.
-- Detector de bomba com pontuação de 0 a 100 e quatro níveis: tranquilo, atenção, suspeito e bomba provável.
-- Alertas explicados em português: expansão absurda, volume descompactado, caminhos com "..", caminhos absolutos, extensão dupla, executáveis, scripts, macros e ZIPs aninhados.
-- Filtro para ver apenas as entradas sinalizadas.
-- Interface responsiva, em tema escuro, com tipografia monoespaçada nos dados.
+## Limites
 
-## Como funciona
+Até 512 MB por ZIP, 30 mil entradas e 32 MB de índice central. O aplicativo lê o final do arquivo e o índice, evitando carregar o conteúdo completo na memória. ZIP64, arquivos divididos em volumes e algumas variantes de ZIP não são compatíveis. ZIPs criptografados com índice legível podem ser listados, com alerta.
 
-O arquivo é lido com a File API e interpretado pelo JSZip. A análise percorre o índice central do ZIP e nunca descompacta o conteúdo, então abrir um pacote enorme é rápido e não estoura a memória. A pontuação de suspeita soma um peso para cada sinal encontrado e é limitada a 100.
+Os tamanhos são declarados pelo próprio arquivo. A análise não verifica CRC, não valida o conteúdo de cada entrada e não inspeciona arquivos compactados internos. A pontuação não confirma malware nem garante segurança.
 
-## Estrutura
+## Arquivos
 
-    index.html        página única
-    css/styles.css    estilos
-    js/app.js         leitura do ZIP, análise e interface
-    README.md
-    LICENSE
+index.html contém a interface, estilos e lógica. LICENSE mantém a licença MIT original.
 
 ## Privacidade
 
-Nenhum arquivo é enviado para servidor nenhum. Todo o processamento acontece na máquina de quem abre a página, e o conteúdo do ZIP nunca é extraído no disco.
-
-## Tecnologia
-
-JavaScript puro, JSZip 3.10 e File API. Sem framework, sem etapa de build e sem dependência de servidor.
-
-## Licença
-
-MIT.
+Todo o processamento ocorre no dispositivo. A página não envia arquivos nem consulta serviços externos.

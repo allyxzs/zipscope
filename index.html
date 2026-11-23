@@ -9,10 +9,875 @@
   <meta property="og:title" content="ZipScope — raio-X de ZIP antes de extrair" />
   <meta property="og:description" content="Detector de zip bomb, extensões perigosas e caminhos maliciosos, direto no navegador." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23090a0c'/%3E%3Cpath d='M6 16h5l3-7 4 14 3-7h5' fill='none' stroke='%23c9fa6e' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/styles.css" />
+<style>
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #07080b;
+  --panel: #0d1015;
+  --panel-2: #11151b;
+  --line: #22262e;
+  --fg: #eceee9;
+  --muted: #8b929e;
+  --lime: #c9fa6e;
+  --green: #3be08f;
+  --yellow: #ffc94a;
+  --orange: #ff8a3d;
+  --red: #ff4d5e;
+  --radius: 20px;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Inter", system-ui, -apple-system, sans-serif;
+  --display: "Space Grotesk", system-ui, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.032) 1px, transparent 1px);
+  background-size: 54px 54px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 35%, transparent 100%);
+}
+
+::selection {
+  background: var(--lime);
+  color: #0a0c08;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- topbar ---------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(7, 8, 11, 0.78);
+  backdrop-filter: blur(16px);
+}
+
+.topbar-in {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 250, 110, 0.25);
+  background: rgba(201, 250, 110, 0.1);
+  color: var(--lime);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.brand-text strong {
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.brand-text em {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.02);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--lime);
+  box-shadow: 0 0 10px rgba(201, 250, 110, 0.8);
+}
+
+/* ---------- hero ---------- */
+.hero {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 0 0;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+
+.hero h1 {
+  margin: 20px 0 0;
+  font-family: var(--display);
+  font-size: clamp(32px, 6vw, 52px);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+}
+
+.hero h1 span {
+  color: var(--lime);
+}
+
+.lede {
+  margin: 20px auto 0;
+  max-width: 560px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* ---------- dropzone ---------- */
+.drop-wrap {
+  max-width: 720px;
+  margin: 36px auto 0;
+}
+
+.drop {
+  position: relative;
+  overflow: hidden;
+  padding: 56px 24px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 26px;
+  background: rgba(13, 16, 21, 0.6);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.25s ease, background 0.25s ease;
+  outline: none;
+}
+
+.drop:hover,
+.drop:focus-visible {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(17, 21, 27, 0.8);
+}
+
+.drop.is-drag {
+  border-color: rgba(201, 250, 110, 0.7);
+  background: rgba(201, 250, 110, 0.07);
+}
+
+.drop-scan {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 0;
+  height: 2px;
+  opacity: 0;
+  background: linear-gradient(to right, transparent, var(--lime), transparent);
+}
+
+.drop.is-busy .drop-scan {
+  opacity: 1;
+  animation: scan 3.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes scan {
+  0% { top: 4%; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { top: 96%; opacity: 0; }
+}
+
+.drop-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--panel-2);
+  color: var(--muted);
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.drop.is-drag .drop-icon {
+  color: var(--lime);
+  border-color: rgba(201, 250, 110, 0.5);
+}
+
+.drop-title {
+  margin: 18px 0 0;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.drop-sub {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.drop-note {
+  margin: 18px 0 0;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(139, 146, 158, 0.75);
+}
+
+.error {
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 77, 94, 0.3);
+  background: rgba(255, 77, 94, 0.07);
+  color: #ff8f99;
+  font-size: 13px;
+}
+
+/* ---------- result ---------- */
+.result {
+  margin-top: 56px;
+  animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: 16px;
+}
+
+.result-head h2 {
+  margin: 8px 0 0;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  word-break: break-all;
+}
+
+.summary {
+  margin: 4px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.file-meta {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.grid-main {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(13, 16, 21, 0.72);
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.grid-main .card {
+  margin-top: 0;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.card-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.card-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(139, 146, 158, 0.7);
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.chip-safe { border-color: rgba(59, 224, 143, 0.35); background: rgba(59, 224, 143, 0.1); color: var(--green); }
+.chip-medium { border-color: rgba(255, 201, 74, 0.35); background: rgba(255, 201, 74, 0.1); color: var(--yellow); }
+.chip-high { border-color: rgba(255, 138, 61, 0.35); background: rgba(255, 138, 61, 0.1); color: var(--orange); }
+.chip-critical { border-color: rgba(255, 77, 94, 0.4); background: rgba(255, 77, 94, 0.1); color: var(--red); }
+
+/* ---------- gauge ---------- */
+.gauge {
+  position: relative;
+  width: 100%;
+  max-width: 250px;
+  margin: 16px auto 0;
+}
+
+.gauge-svg {
+  display: block;
+  width: 100%;
+}
+
+.gauge-track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.gauge-arc {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.7s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.4s ease;
+}
+
+.gauge-read {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  text-align: center;
+}
+
+.gauge-read span {
+  display: block;
+  font-family: var(--display);
+  font-size: 46px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--green);
+}
+
+.gauge-read em {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gauge-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(139, 146, 158, 0.65);
+}
+
+.verdict {
+  margin: 16px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ---------- stats ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(17, 21, 27, 0.65);
+  padding: 14px 16px;
+}
+
+.stat-label {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stat-value {
+  margin: 8px 0 0;
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-value.is-accent {
+  color: var(--lime);
+}
+
+.stat-hint {
+  margin: 8px 0 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: rgba(139, 146, 158, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- alerts ---------- */
+.alerts {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alert {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(17, 21, 27, 0.5);
+}
+
+.alert-critical { border-color: rgba(255, 77, 94, 0.3); background: rgba(255, 77, 94, 0.06); }
+.alert-high { border-color: rgba(255, 138, 61, 0.3); background: rgba(255, 138, 61, 0.06); }
+.alert-medium { border-color: rgba(255, 201, 74, 0.25); background: rgba(255, 201, 74, 0.05); }
+
+.alert-body { min-width: 0; }
+
+.alert-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.alert-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.alert-sev {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.alert-critical .alert-sev { color: var(--red); }
+.alert-high .alert-sev { color: var(--orange); }
+.alert-medium .alert-sev { color: var(--yellow); }
+.alert-low .alert-sev { color: var(--muted); }
+
+.alert-detail {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.alerts-ok {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(59, 224, 143, 0.25);
+  background: rgba(59, 224, 143, 0.05);
+}
+
+.alerts-ok strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.alerts-ok span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.ext-list {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.ext-title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ext-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ext {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(17, 21, 27, 0.7);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.ext i {
+  font-style: normal;
+  color: rgba(139, 146, 158, 0.75);
+}
+
+/* ---------- table ---------- */
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(17, 21, 27, 0.7);
+}
+
+.tab {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tab:hover { color: var(--fg); }
+
+.tab.is-on {
+  background: var(--panel-2);
+  color: var(--fg);
+}
+
+.table-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+th {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+th:first-child { padding-left: 4px; }
+th:last-child { padding-right: 4px; }
+
+.th-num { text-align: right; }
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 12.5px;
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: 0; }
+
+.cell-path {
+  max-width: 300px;
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path-dir { color: rgba(139, 146, 158, 0.6); }
+.path-name { color: rgba(236, 238, 233, 0.9); }
+
+.cell-num {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cell-muted { color: var(--muted); }
+
+.ratio {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ratio.is-hot { color: var(--orange); }
+
+.cell-flags {
+  white-space: normal;
+}
+
+.tag {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag-executavel,
+.tag-traversal { border-color: rgba(255, 77, 94, 0.35); background: rgba(255, 77, 94, 0.1); color: var(--red); }
+.tag-absoluto,
+.tag-dupla { border-color: rgba(255, 138, 61, 0.35); background: rgba(255, 138, 61, 0.1); color: var(--orange); }
+.tag-macro,
+.tag-script { border-color: rgba(255, 201, 74, 0.35); background: rgba(255, 201, 74, 0.1); color: var(--yellow); }
+
+.tag-ok {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(139, 146, 158, 0.45);
+}
+
+.empty {
+  padding: 32px 10px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.note {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(139, 146, 158, 0.7);
+}
+
+/* ---------- checks + footer ---------- */
+.checks {
+  margin-top: 64px;
+  padding-top: 36px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.checks .eyebrow { color: var(--muted); }
+
+.checks-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.check {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(13, 16, 21, 0.5);
+}
+
+.check strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.check span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.foot {
+  margin-top: 56px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.foot-in {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 28px;
+  padding-bottom: 28px;
+}
+
+.foot-in p {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(139, 146, 158, 0.7);
+}
+
+.foot-note {
+  max-width: 420px;
+  font-family: var(--sans) !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  line-height: 1.6;
+  color: rgba(139, 146, 158, 0.6) !important;
+}
+
+@media (max-width: 860px) {
+  .grid-main { grid-template-columns: minmax(0, 1fr); }
+  .checks-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .hero { padding-top: 44px; }
+  .drop { padding: 40px 18px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .checks-grid { grid-template-columns: minmax(0, 1fr); }
+  .card { padding: 16px; }
+}
+
+[hidden]{display:none!important} .path-name,.path-dir{unicode-bidi:plaintext} #more{margin:16px;padding:10px 20px;background:#c9fa6e;border:0;border-radius:8px;cursor:pointer}
+</style>
 </head>
 <body>
   <header class="topbar">
@@ -42,10 +907,10 @@
         </span>
         <p id="drop-title" class="drop-title">Solte o .zip aqui</p>
         <p class="drop-sub">ou clique para escolher um arquivo</p>
-        <p class="drop-note">lido no navegador · nenhum upload · nada é extraído</p>
+        <p class="drop-note">até 512 MB · 30 mil entradas · leitura local</p>
       </div>
       <input id="file" type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden />
-      <p id="error" class="error" hidden></p>
+      <p id="error" class="error" role="alert" hidden></p>
     </div>
 
     <section id="result" class="result" hidden>
@@ -74,7 +939,7 @@
               <em>de 100</em>
             </div>
           </div>
-          <div class="gauge-scale"><span>0 tranquilo</span><span>100 bomba</span></div>
+          <div class="gauge-scale"><span>0 poucos sinais</span><span>100 muitos sinais</span></div>
           <p id="verdict" class="verdict"></p>
         </article>
 
@@ -111,14 +976,14 @@
             <tbody id="rows"></tbody>
           </table>
         </div>
-        <p id="table-note" class="note" hidden></p>
+        <button id="more" type="button" hidden>Mostrar mais 200</button><p id="table-note" class="note" hidden></p>
       </article>
     </section>
 
     <section class="checks">
       <p class="eyebrow">o que o raio-x procura</p>
       <div class="checks-grid">
-        <div class="check"><strong>Detector de bomba</strong><span>Compara tamanho real e compactado para achar taxas de expansão impossíveis.</span></div>
+        <div class="check"><strong>Detector de bomba</strong><span>Compara os tamanhos declarados para sinalizar expansão elevada.</span></div>
         <div class="check"><strong>Caminhos maliciosos</strong><span>Procura por ".." e caminhos absolutos que escapam da pasta de destino.</span></div>
         <div class="check"><strong>Extensões perigosas</strong><span>Sinaliza executáveis, scripts, macros e disfarces como foto.jpg.exe.</span></div>
         <div class="check"><strong>ZIP dentro de ZIP</strong><span>Conta arquivos compactados aninhados e o volume total de entradas.</span></div>
@@ -128,12 +993,681 @@
 
   <footer class="foot">
     <div class="wrap foot-in">
-      <p>ZipScope · análise local com JSZip e File API</p>
-      <p class="foot-note">O arquivo nunca sai do seu dispositivo. Nada é enviado, nada é extraído: o raio-x lê apenas o índice do ZIP.</p>
+      <p>ZipScope · versão 1.1 · análise local com File API</p>
+      <p class="foot-note">Análise heurística do índice, sem verificação antivírus ou inspeção do conteúdo dos ZIPs internos. O arquivo fica no seu dispositivo. Nada é enviado, nada é extraído: o raio-x lê apenas o índice do ZIP.</p>
     </div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="js/app.js"></script>
+  
+  <script>
+(function () {
+  "use strict";
+
+  var MB = 1024 * 1024;
+  var GB = 1024 * MB;
+
+  var EXT_GROUPS = {
+    executavel: ["exe", "dll", "sys", "scr", "com", "pif", "msi", "msp", "cpl", "ocx", "drv",
+      "elf", "so", "dylib", "apk", "app", "dmg", "pkg", "deb", "rpm", "jar", "war",
+      "vhd", "vhdx", "iso", "img", "lnk", "url", "reg", "chm", "hta", "ade", "adp"],
+    script: ["bat", "cmd", "ps1", "psm1", "vbs", "vbe", "jse", "wsf", "wsh", "sh",
+      "js", "mjs", "cjs", "py", "php", "bash", "zsh", "scpt", "ahk", "command"],
+    macro: ["docm", "dotm", "xlsm", "xltm", "pptm", "potm", "ppsm", "xlam", "xlsb"],
+    arquivo: ["zip", "rar", "7z", "tar", "gz", "bz2", "xz", "tgz", "tbz", "cab", "arj",
+      "lzh", "zst", "ace"]
+  };
+
+  var EXT_CATEGORY = {};
+  Object.keys(EXT_GROUPS).forEach(function (category) {
+    EXT_GROUPS[category].forEach(function (ext) {
+      EXT_CATEGORY[ext] = category;
+    });
+  });
+
+  var FLAG_LABEL = {
+    executavel: "Executável",
+    script: "Script",
+    macro: "Macro",
+    arquivo: "Compactado",
+    traversal: "Caminho ..",
+    absoluto: "Caminho absoluto",
+    dupla: "Extensão dupla",
+    oculto: "Oculto", encrypted: "Criptografado", symlink: "Link simbólico", control: "Nome especial"
+  };
+
+  var INNOCENT_EXT = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "pdf", "txt", "doc",
+    "docx", "xls", "xlsx", "ppt", "pptx", "mp3", "mp4", "avi", "mkv", "csv", "json", "html", "xml"];
+
+  var SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
+
+  var SEVERITY_LABEL = { critical: "crítico", high: "alto", medium: "médio", low: "baixo" };
+
+  var UNITS = ["B", "KB", "MB", "GB", "TB"];
+
+  var TONE_COLOR = {
+    safe: "#3be08f",
+    medium: "#ffc94a",
+    high: "#ff8a3d",
+    critical: "#ff4d5e"
+  };
+
+  var LIMIT = 200;
+
+  function formatBytes(bytes) {
+    var value = Number(bytes);
+    if (!isFinite(value) || value <= 0) return "0 B";
+    var index = 0;
+    var size = value;
+    while (size >= 1024 && index < UNITS.length - 1) {
+      size = size / 1024;
+      index += 1;
+    }
+    var digits = index === 0 ? 0 : size >= 100 ? 0 : size >= 10 ? 1 : 2;
+    return size.toLocaleString("pt-BR", {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }) + " " + UNITS[index];
+  }
+
+  function formatRatio(ratio) {
+    if (ratio === Infinity) return "∞";
+    if (!isFinite(ratio) || ratio <= 0) return "—";
+    var digits = ratio >= 100 ? 0 : ratio >= 10 ? 1 : 2;
+    return ratio.toLocaleString("pt-BR", {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }) + "×";
+  }
+
+  function formatCount(value) {
+    return Number(value || 0).toLocaleString("pt-BR");
+  }
+
+  function basename(path) {
+    var parts = String(path || "").split("/");
+    return parts[parts.length - 1] || String(path || "");
+  }
+
+  function dirname(path) {
+    var parts = String(path || "").split("/");
+    parts.pop();
+    return parts.join("/");
+  }
+
+  function extOf(path) {
+    var name = basename(path);
+    var dot = name.lastIndexOf(".");
+    if (dot <= 0) return "";
+    return name.slice(dot + 1).toLowerCase();
+  }
+
+  function esc(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function levelFor(score) {
+    if (score >= 70) {
+      return {
+        tone: "critical",
+        label: "Muitos sinais",
+        blurb: "Vários indicadores exigem revisão. A pontuação é heurística e não confirma conteúdo malicioso."
+      };
+    }
+    if (score >= 45) {
+      return {
+        tone: "high",
+        label: "Suspeito",
+        blurb: "Há sinais suficientes para desconfiar. Se for extrair, faça isso em uma pasta isolada, com espaço em disco monitorado."
+      };
+    }
+    if (score >= 20) {
+      return {
+        tone: "medium",
+        label: "Atenção",
+        blurb: "Existem sinais que merecem conferência antes de abrir o conteúdo."
+      };
+    }
+    return {
+      tone: "safe",
+      label: "Poucos sinais",
+      blurb: "Poucos indicadores pelas regras locais. A análise do índice não garante a segurança do conteúdo."
+    };
+  }
+
+  function analyze(entries) {
+    var files = [];
+    var dirCount = 0;
+
+    entries.forEach(function (entry) {
+      if (entry.isDir) dirCount += 1;
+      else files.push(entry);
+    });
+
+    var totalSize = 0;
+    var totalCompressed = 0;
+    var largest = null;
+    var extremeRatio = null;
+
+    var traversal = [];
+    var absolute = [];
+    var doubleExt = [];
+    var dangerousMap = {};
+    var rows = [];
+
+    entries.forEach(function (file) {
+      totalSize += file.size;
+      totalCompressed += file.compressed;
+      if (!largest || file.size > largest.size) {
+        largest = { path: file.path, size: file.size };
+      }
+
+      var ext = extOf(file.path);
+      var category = EXT_CATEGORY[ext] || null;
+      var flags = [];
+      if (file.encrypted) flags.push("encrypted");
+      if (file.symlink) flags.push("symlink");
+      if (/[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/.test(file.path)) flags.push("control");
+
+      if (category) {
+        flags.push(category);
+        var current = dangerousMap[ext] || { ext: ext, category: category, count: 0, size: 0 };
+        current.count += 1;
+        current.size += file.size;
+        dangerousMap[ext] = current;
+      }
+
+      var segments = file.path.replace(/\\/g, "/").split("/");
+      if (segments.indexOf("..") !== -1) {
+        traversal.push(file.path);
+        flags.push("traversal");
+      }
+      if (file.path.charAt(0) === "/" || /^[a-zA-Z]:/.test(file.path) || file.path.slice(0, 2) === "\\\\") {
+        absolute.push(file.path);
+        flags.push("absoluto");
+      }
+
+      var nameParts = basename(file.path).toLowerCase().split(".");
+      if (nameParts.length >= 3 && category && INNOCENT_EXT.indexOf(nameParts[nameParts.length - 2]) !== -1) {
+        doubleExt.push(file.path);
+        flags.push("dupla");
+      }
+
+      if (basename(file.path).charAt(0) === ".") flags.push("oculto");
+
+      var ratio = file.compressed > 0 ? file.size / file.compressed : file.size > 0 ? Infinity : null;
+      if (ratio && ratio >= 1000 && file.size >= 10 * MB && !extremeRatio) {
+        extremeRatio = { path: file.path, ratio: ratio, size: file.size };
+      }
+
+      rows.push({
+        path: file.path,
+        size: file.size,
+        compressed: file.compressed,
+        ext: ext,
+        category: category,
+        ratio: ratio,
+        flags: flags
+      });
+    });
+
+    var ratioTotal = totalCompressed > 0 ? totalSize / totalCompressed : totalSize > 0 ? Infinity : null;
+    var alerts = [];
+    var score = 0;
+
+    function addAlert(severity, title, detail) {
+      alerts.push({ severity: severity, title: title, detail: detail });
+    }
+
+    ["encrypted", "symlink", "control"].forEach(function (flag) {
+      var count = rows.filter(function (r) { return r.flags.indexOf(flag) >= 0; }).length;
+      if (count) {
+        score += 15;
+        addAlert("medium", FLAG_LABEL[flag], count + " entrada(s) com este indicador. Confira a origem e o destino antes de extrair.");
+      }
+    });
+    if (traversal.length) {
+      score += 45;
+      addAlert("critical", "Caminhos que escapam da pasta",
+        formatCount(traversal.length) + " entrada(s) usam \"..\" no caminho. Ao extrair, o conteúdo pode ser gravado fora da pasta de destino e sobrescrever arquivos do sistema.");
+    }
+
+    if (absolute.length) {
+      score += 18;
+      addAlert("high", "Caminhos absolutos",
+        formatCount(absolute.length) + " entrada(s) apontam para um caminho absoluto (como /etc ou C:\\). Um extrator descuidado pode escrever direto no sistema.");
+    }
+
+    if (ratioTotal !== null) {
+      if (ratioTotal >= 1000) {
+        score += 38;
+        addAlert("critical", "Expansão absurda",
+          "O pacote ocupa pouco e descomprime " + formatRatio(ratioTotal) + " o próprio tamanho. A taxa merece investigação, inclusive em conteúdo legítimo muito repetitivo.");
+      } else if (ratioTotal >= 300) {
+        score += 26;
+        addAlert("high", "Taxa de compressão muito alta",
+          "Descompacta " + formatRatio(ratioTotal) + " o tamanho do arquivo. Textos repetitivos também podem apresentar taxas altas.");
+      } else if (ratioTotal >= 100) {
+        score += 15;
+        addAlert("medium", "Taxa de compressão alta",
+          "Descompacta " + formatRatio(ratioTotal) + " o tamanho do arquivo. Confira o volume total antes de extrair.");
+      } else if (ratioTotal >= 40) {
+        score += 6;
+        addAlert("low", "Taxa de compressão acima do normal",
+          "Descompacta " + formatRatio(ratioTotal) + " o tamanho do arquivo. Costuma ser normal em textos e logs, mas vale conferir.");
+      }
+    }
+
+    if (totalSize >= 4 * GB) {
+      score += 26;
+      addAlert("critical", "Descompacta para um volume enorme",
+        "O conteúdo ocupa " + formatBytes(totalSize) + " depois de extraído. Isso pode encher o disco inteiro.");
+    } else if (totalSize >= 1 * GB) {
+      score += 18;
+      addAlert("high", "Conteúdo muito grande",
+        "São " + formatBytes(totalSize) + " descompactados. Reserve espaço em disco antes de extrair.");
+    } else if (totalSize >= 200 * MB) {
+      score += 8;
+      addAlert("medium", "Conteúdo grande",
+        "São " + formatBytes(totalSize) + " descompactados em " + formatCount(files.length) + " arquivo(s).");
+    } else if (totalSize >= 50 * MB) {
+      score += 3;
+      addAlert("low", "Conteúdo acima da média",
+        "São " + formatBytes(totalSize) + " descompactados.");
+    }
+
+    var execList = [];
+    var scriptList = [];
+    var macroList = [];
+    var nestedList = [];
+
+    Object.keys(dangerousMap).forEach(function (key) {
+      var item = dangerousMap[key];
+      if (item.category === "executavel") execList.push(item);
+      if (item.category === "script") scriptList.push(item);
+      if (item.category === "macro") macroList.push(item);
+      if (item.category === "arquivo") nestedList.push(item);
+    });
+
+    function countOf(list) {
+      return list.reduce(function (sum, item) { return sum + item.count; }, 0);
+    }
+
+    function extText(list) {
+      return list.map(function (item) { return "." + item.ext; }).join(", ");
+    }
+
+    var execCount = countOf(execList);
+    var scriptCount = countOf(scriptList);
+    var macroCount = countOf(macroList);
+    var nestedCount = countOf(nestedList);
+
+    if (execCount) {
+      score += Math.min(24, execCount * 6);
+      addAlert("high", "Arquivos executáveis",
+        formatCount(execCount) + " entrada(s) são executáveis ou instaladores (" + extText(execList) + "). Só rode se confiar na origem.");
+    }
+
+    if (scriptCount) {
+      score += Math.min(12, scriptCount * 2);
+      addAlert("medium", "Scripts no pacote",
+        formatCount(scriptCount) + " entrada(s) são scripts que podem executar comandos (" + extText(scriptList) + ").");
+    }
+
+    if (macroCount) {
+      score += Math.min(10, macroCount * 3);
+      addAlert("high", "Documentos com macro",
+        formatCount(macroCount) + " entrada(s) são documentos com macro habilitada, um vetor comum de malware.");
+    }
+
+    if (nestedCount) {
+      score += Math.min(12, nestedCount * 4);
+      addAlert("medium", "Arquivos compactados dentro do ZIP",
+        formatCount(nestedCount) + " entrada(s) são outros arquivos compactados. Bomba dentro de bomba é uma técnica real de escape.");
+    }
+
+    if (doubleExt.length) {
+      score += 12;
+      addAlert("high", "Extensão dupla",
+        formatCount(doubleExt.length) + " arquivo(s) escondem um executável atrás de uma extensão inofensiva, como foto.jpg.exe.");
+    }
+
+    if (extremeRatio) {
+      score += 10;
+      addAlert("high", "Arquivo com expansão extrema",
+        basename(extremeRatio.path) + " descompacta " + formatRatio(extremeRatio.ratio) + " e passa de " + formatBytes(extremeRatio.size) + ".");
+    }
+
+    if (files.length >= 20000) {
+      score += 10;
+      addAlert("high", "Quantidade de arquivos fora do normal",
+        formatCount(files.length) + " arquivos em um único pacote. Extrair isso gera uma enxurrada de arquivos no disco.");
+    } else if (files.length >= 5000) {
+      score += 5;
+      addAlert("medium", "Muitos arquivos",
+        formatCount(files.length) + " arquivos em um único pacote.");
+    }
+
+    var finalScore = Math.max(0, Math.min(100, Math.round(score)));
+
+    alerts.sort(function (a, b) {
+      return SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
+    });
+
+    rows.sort(function (a, b) {
+      if (a.flags.length !== b.flags.length) return b.flags.length - a.flags.length;
+      return b.size - a.size;
+    });
+
+    var dangerousList = Object.keys(dangerousMap).map(function (key) {
+      return dangerousMap[key];
+    }).sort(function (a, b) { return b.count - a.count; });
+
+    return {
+      fileCount: files.length,
+      dirCount: dirCount,
+      totalSize: totalSize,
+      totalCompressed: totalCompressed,
+      ratio: ratioTotal,
+      largest: largest,
+      score: finalScore,
+      level: levelFor(finalScore),
+      alerts: alerts,
+      rows: rows,
+      dangerous: dangerousList,
+      summary: formatCount(files.length) + " arquivos · " + formatBytes(totalSize) + " descompactados" +
+        (ratioTotal ? " · " + formatRatio(ratioTotal) + " de compressão" : "")
+    };
+  }
+
+  /* ---------- render ---------- */
+
+  var dropEl = document.getElementById("drop");
+  var dropTitle = document.getElementById("drop-title");
+  var inputEl = document.getElementById("file");
+  var errorEl = document.getElementById("error");
+  var resultEl = document.getElementById("result");
+
+  var state = { rows: [], onlyFlagged: false, visible: LIMIT };
+
+  var DEFAULT_TITLE = "Solte o .zip aqui";
+
+  function showError(message) {
+    errorEl.textContent = message;
+    errorEl.hidden = false;
+    dropEl.classList.remove("is-busy");
+    dropTitle.textContent = DEFAULT_TITLE;
+  }
+
+  function statCard(label, value, hint, accent) {
+    return '<div class="stat">' +
+      '<p class="stat-label">' + label + "</p>" +
+      '<p class="stat-value' + (accent ? " is-accent" : "") + '">' + value + "</p>" +
+      '<p class="stat-hint">' + esc(hint) + "</p>" +
+      "</div>";
+  }
+
+  function renderStats(analysis) {
+    var flagged = analysis.rows.filter(function (row) { return row.flags.length > 0; }).length;
+    document.getElementById("stats").innerHTML =
+      statCard("Arquivos", formatCount(analysis.fileCount), formatCount(analysis.dirCount) + " pastas", false) +
+      statCard("Descompactado", formatBytes(analysis.totalSize), "tamanho declarado no índice", false) +
+      statCard("Compactado", formatBytes(analysis.totalCompressed), "soma dos dados compactados", false) +
+      statCard("Taxa de compressão", formatRatio(analysis.ratio), "descompactado ÷ compactado", true) +
+      statCard("Maior arquivo", analysis.largest ? formatBytes(analysis.largest.size) : "—",
+        analysis.largest ? basename(analysis.largest.path) : "sem arquivos", false) +
+      statCard("Sinalizados", formatCount(flagged), "entradas com algum alerta", false);
+  }
+
+  function renderAlerts(alerts, dangerous) {
+    var box = document.getElementById("alerts");
+    var count = document.getElementById("alert-count");
+    count.textContent = alerts.length === 0 ? "nenhum sinal" : alerts.length + " encontrado(s)";
+
+    var html = "";
+    if (alerts.length === 0) {
+      html = '<div class="alerts-ok"><div><strong>Nenhum indicador pelas regras locais</strong>' +
+        "<span>Nenhuma extensão crítica, caminho malicioso ou expansão anormal foi detectada neste pacote.</span></div></div>";
+    } else {
+      html = alerts.map(function (alert) {
+        return '<div class="alert alert-' + alert.severity + '">' +
+          '<div class="alert-body">' +
+            '<div class="alert-top">' +
+              '<p class="alert-title">' + esc(alert.title) + "</p>" +
+              '<span class="alert-sev">' + (SEVERITY_LABEL[alert.severity] || "") + "</span>" +
+            "</div>" +
+            '<p class="alert-detail">' + esc(alert.detail) + "</p>" +
+          "</div>" +
+        "</div>";
+      }).join("");
+    }
+
+    if (dangerous.length) {
+      html += '<div class="ext-list"><p class="ext-title">Extensões que merecem atenção</p><div class="ext-items">' +
+        dangerous.slice(0, 14).map(function (item) {
+          return '<span class="ext">.' + esc(item.ext) + "<i>×" + item.count + "</i></span>";
+        }).join("") +
+        "</div></div>";
+    }
+
+    box.innerHTML = html;
+  }
+
+  function renderRows() {
+    var list = state.onlyFlagged
+      ? state.rows.filter(function (row) { return row.flags.length > 0; })
+      : state.rows;
+    var shown = list.slice(0, state.visible);
+    var tbody = document.getElementById("rows");
+
+    if (!shown.length) {
+      tbody.innerHTML = '<tr><td class="empty" colspan="5">Nenhum arquivo com sinal de alerta neste pacote.</td></tr>';
+    } else {
+      tbody.innerHTML = shown.map(function (row) {
+        var flags = row.flags.length
+          ? row.flags.map(function (flag) {
+              return '<span class="tag tag-' + flag + '">' + (FLAG_LABEL[flag] || flag) + "</span>";
+            }).join("")
+          : '<span class="tag-ok">ok</span>';
+        var ratio = row.ratio
+          ? '<span class="ratio' + (row.ratio >= 100 ? " is-hot" : "") + '">' + formatRatio(row.ratio) + "</span>"
+          : '<span class="ratio">—</span>';
+        var dir = dirname(row.path);
+
+        return "<tr>" +
+          '<td class="cell-path" title="' + esc(row.path) + '">' +
+            (dir ? '<span class="path-dir">' + esc(dir) + "/</span>" : "") +
+            '<span class="path-name">' + esc(basename(row.path)) + "</span>" +
+          "</td>" +
+          '<td class="cell-num">' + formatBytes(row.size) + "</td>" +
+          '<td class="cell-num cell-muted">' + formatBytes(row.compressed) + "</td>" +
+          "<td>" + ratio + "</td>" +
+          '<td class="cell-flags">' + flags + "</td>" +
+        "</tr>";
+      }).join("");
+    }
+
+    document.getElementById("more").hidden = list.length <= state.visible;
+    var note = document.getElementById("table-note");
+    if (list.length > state.visible) {
+      note.hidden = false;
+      note.textContent = "Mostrando " + state.visible + " de " + formatCount(list.length) + " entradas";
+    } else {
+      note.hidden = true;
+    }
+
+    document.getElementById("tab-flagged").textContent =
+      "Suspeitos · " + formatCount(state.rows.filter(function (row) { return row.flags.length > 0; }).length);
+  }
+
+  function setTab(onlyFlagged) {
+    state.onlyFlagged = onlyFlagged;
+    state.visible = LIMIT;
+    document.getElementById("tab-all").classList.toggle("is-on", !onlyFlagged);
+    document.getElementById("tab-flagged").classList.toggle("is-on", onlyFlagged);
+    renderRows();
+  }
+
+  document.getElementById("tab-all").addEventListener("click", function () { setTab(false); });
+  document.getElementById("tab-flagged").addEventListener("click", function () { setTab(true); });
+
+  function render(file, analysis) {
+    document.getElementById("file-name").textContent = file.name;
+    document.getElementById("file-meta").textContent = formatBytes(file.size) + " no disco";
+    document.getElementById("summary").textContent = analysis.summary;
+
+    var color = TONE_COLOR[analysis.level.tone] || TONE_COLOR.safe;
+    var scoreEl = document.getElementById("score");
+    scoreEl.textContent = analysis.score;
+    scoreEl.style.color = color;
+
+    var chip = document.getElementById("level-chip");
+    chip.textContent = analysis.level.label;
+    chip.className = "chip chip-" + analysis.level.tone;
+
+    document.getElementById("verdict").textContent = analysis.level.blurb;
+
+    var arc = document.getElementById("gauge-arc");
+    var length = Math.PI * 86;
+    arc.style.stroke = color;
+    arc.setAttribute("stroke-dasharray", (analysis.score / 100) * length + " " + (length + 10));
+
+    renderStats(analysis);
+    renderAlerts(analysis.alerts, analysis.dangerous);
+
+    state.visible = LIMIT;
+    state.rows = analysis.rows;
+    state.onlyFlagged = false;
+    document.getElementById("tab-all").classList.add("is-on");
+    document.getElementById("tab-flagged").classList.remove("is-on");
+    renderRows();
+
+    resultEl.hidden = false;
+    resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function readIndex(file) {
+    if (file.size > 512 * MB) throw new Error("O limite é 512 MB por ZIP.");
+    if (file.size < 22) throw new Error("Arquivo incompleto ou inválido.");
+    var tailStart = Math.max(0, file.size - 65557);
+    var tail = new DataView(await file.slice(tailStart).arrayBuffer());
+    var end = -1;
+    for (var i = tail.byteLength - 22; i >= 0; i--) {
+      if (tail.getUint32(i, true) === 0x06054b50 &&
+          i + 22 + tail.getUint16(i + 20, true) === tail.byteLength) {
+        end = i;
+        break;
+      }
+    }
+    if (end < 0) throw new Error("Índice ZIP ausente ou incompleto.");
+    var count = tail.getUint16(end + 10, true);
+    var size = tail.getUint32(end + 12, true);
+    var offset = tail.getUint32(end + 16, true);
+    if (count === 65535 || size === 0xffffffff || offset === 0xffffffff)
+      throw new Error("ZIP64 ainda não é compatível com esta versão.");
+    if (tail.getUint16(end + 4, true) || tail.getUint16(end + 6, true) ||
+        tail.getUint16(end + 8, true) !== count)
+      throw new Error("ZIP dividido em volumes não é compatível.");
+    if (count > 30000 || size > 32 * MB)
+      throw new Error("Limite de análise: 30 mil entradas e índice de até 32 MB.");
+    if (offset + size !== tailStart + end)
+      throw new Error("Estrutura ZIP inconsistente ou variante não compatível.");
+    var buffer = await file.slice(offset, offset + size).arrayBuffer();
+    var view = new DataView(buffer);
+    var bytes = new Uint8Array(buffer);
+    var entries = [];
+    var position = 0;
+    var cp437 = "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ";
+    for (var n = 0; n < count; n++) {
+      if (position + 46 > size || view.getUint32(position, true) !== 0x02014b50)
+        throw new Error("Entrada inválida no índice ZIP.");
+      var flags = view.getUint16(position + 8, true);
+      var compressed = view.getUint32(position + 20, true);
+      var unpacked = view.getUint32(position + 24, true);
+      var nameLength = view.getUint16(position + 28, true);
+      var extraLength = view.getUint16(position + 30, true);
+      var commentLength = view.getUint16(position + 32, true);
+      var local = view.getUint32(position + 42, true);
+      var next = position + 46 + nameLength + extraLength + commentLength;
+      if (next > size || !nameLength) throw new Error("Nome de entrada incompleto.");
+      if (compressed === 0xffffffff || unpacked === 0xffffffff || local === 0xffffffff)
+        throw new Error("Entradas ZIP64 ainda não são compatíveis.");
+      if (view.getUint16(position + 34, true) || local + 30 + compressed > offset)
+        throw new Error("Endereço de entrada inválido ou ZIP dividido em volumes.");
+      var nameBytes = bytes.subarray(position + 46, position + 46 + nameLength);
+      var name = flags & 2048 ? new TextDecoder("utf-8", { fatal: true }).decode(nameBytes)
+        : Array.from(nameBytes, function (b) { return b < 128 ? String.fromCharCode(b) : cp437[b - 128]; }).join("");
+      entries.push({
+        path: name.replace(/\\/g, "/"),
+        isDir: /[\\/]$/.test(name),
+        size: unpacked,
+        compressed: compressed,
+        encrypted: Boolean(flags & 1),
+        symlink: (view.getUint32(position + 38, true) >>> 16 & 0xf000) === 0xa000
+      });
+      position = next;
+    }
+    if (position !== size) throw new Error("Índice com dados adicionais não compatíveis.");
+    return entries;
+  }
+
+  var requestNumber = 0;
+  async function handleFile(file) {
+    var request = ++requestNumber;
+    errorEl.hidden = true;
+    resultEl.hidden = true;
+    dropEl.classList.add("is-busy");
+    dropTitle.textContent = "Lendo o índice do ZIP…";
+    try {
+      var entries = await readIndex(file);
+      if (request !== requestNumber) return;
+      render(file, analyze(entries));
+      dropEl.classList.remove("is-busy");
+      dropTitle.textContent = "Analisar outro arquivo";
+    } catch (error) {
+      if (request === requestNumber)
+        showError(error.message || "Não foi possível ler este ZIP.");
+    }
+  }
+
+  document.getElementById("more").addEventListener("click", function () {
+    state.visible += LIMIT;
+    renderRows();
+  });
+  function openPicker() {
+    inputEl.click();
+  }
+
+  dropEl.addEventListener("click", openPicker);
+  dropEl.addEventListener("keydown", function (event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openPicker();
+    }
+  });
+  dropEl.addEventListener("dragover", function (event) {
+    event.preventDefault();
+    dropEl.classList.add("is-drag");
+  });
+  dropEl.addEventListener("dragleave", function () {
+    dropEl.classList.remove("is-drag");
+  });
+  dropEl.addEventListener("drop", function (event) {
+    event.preventDefault();
+    dropEl.classList.remove("is-drag");
+    if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+      handleFile(event.dataTransfer.files[0]);
+    }
+  });
+  inputEl.addEventListener("change", function () {
+    if (inputEl.files && inputEl.files[0]) handleFile(inputEl.files[0]);
+    inputEl.value = "";
+  });
+})();
+
+</script>
 </body>
 </html>
